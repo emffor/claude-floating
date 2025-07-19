@@ -1,0 +1,12 @@
+{
+  "name": "claude-floating",
+  "version": "1.0.0",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^37.2.3"
+  }
+}
