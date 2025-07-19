@@ -1,6 +1,6 @@
 {
   "name": "claude-floating",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude AI floating window for Ubuntu",
   "author": {
     "name": "emfeloan",
@@ -22,19 +22,28 @@
     "dist": "electron-builder --linux --publish=never"
   },
   "build": {
-    "appId": "com.yourname.claude-floating",
+    "appId": "com.emfeloan.claude-floating",
     "productName": "Claude Floating",
     "directories": {
       "output": "dist"
     },
     "linux": {
       "target": "deb",
-      "category": "Utility"
+      "category": "Utility",
+      "desktop": {
+        "StartupNotify": false,
+        "Terminal": false,
+        "Type": "Application",
+        "Categories": "Utility;",
+        "StartupWMClass": "claude-floating"
+      },
+      "afterInstall": "scripts/postinstall.sh"
     },
     "icon": "icon.png",
     "files": [
       "main.js",
-      "package.json"
+      "package.json",
+      "scripts/"
     ]
   },
   "devDependencies": {
