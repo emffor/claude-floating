@@ -23,7 +23,7 @@ claude-floating
 ## 🛠️ Desenvolvimento
 
 **Pré-requisitos:**
-- Node.js 18+ 
+- Node.js 20.18.2+ 
 - Yarn
 - Ubuntu/Linux
 
@@ -39,12 +39,29 @@ yarn install
 
 # Executar em desenvolvimento
 yarn start
-
-# Gerar build .deb
-yarn build
 ```
 
-## 📦 Estrutura do Projeto
+## 📦 Build e Versionamento
+
+**Comandos de build com versionamento automático:**
+
+```bash
+# Patch: 1.0.0 → 1.0.1 (correções de bugs)
+yarn build
+
+# Minor: 1.0.0 → 1.1.0 (novas funcionalidades)
+yarn build:minor
+
+# Major: 1.0.0 → 2.0.0 (mudanças que quebram compatibilidade)
+yarn build:major
+
+# Build sem versionamento (manual)
+yarn dist
+```
+
+**Resultado:** Cada comando atualiza automaticamente a versão no `package.json` e gera o arquivo `.deb` correspondente na pasta `dist/`.
+
+## 📁 Estrutura do Projeto
 
 ```
 claude-floating/
@@ -79,22 +96,28 @@ Terminal=false
 
 **Atalhos:**
 - **Ctrl+Shift+C**: Abrir/fechar janela flutuante
+- **Ctrl+T**: Nova aba
+- **Ctrl+W**: Fechar aba atual
 - **ESC**: Fechar janela quando focada
 - **Arrastar**: Mover janela pela tela
 
 **Funcionalidades:**
+- ✅ Sistema de abas integrado
 - ✅ Janela sempre no topo
 - ✅ Login persistente no Claude.ai
 - ✅ Arrastável pela tela
 - ✅ Atalho global funcionando
 - ✅ Sem bordas (frameless)
+- ✅ Versionamento automático nos builds
 
 ## 🔧 Scripts Disponíveis
 
 ```bash
 yarn start          # Executar em desenvolvimento
-yarn build          # Gerar .deb para produção
-yarn dist           # Gerar .deb (mesmo que build)
+yarn build          # Build patch (1.0.0 → 1.0.1)
+yarn build:minor    # Build minor (1.0.0 → 1.1.0)  
+yarn build:major    # Build major (1.0.0 → 2.0.0)
+yarn dist           # Build sem versionamento
 ```
 
 ## 📋 Dependências
@@ -126,12 +149,22 @@ sudo apt remove claude-floating
 sudo apt install fuse libfuse2
 ```
 
+## 🔄 Fluxo de Desenvolvimento
+
+1. **Desenvolvimento:** `yarn start`
+2. **Correção de bug:** `yarn build`
+3. **Nova funcionalidade:** `yarn build:minor`
+4. **Mudança breaking:** `yarn build:major`
+5. **Instalar:** `sudo dpkg -i dist/claude-floating_X.X.X_amd64.deb`
+
 ## 📝 Notas Técnicas
 
 - Usa sessão persistente para manter login
 - User-Agent personalizado para compatibilidade
 - Drag habilitado em toda área exceto inputs
 - WebSecurity desabilitado para funcionamento
+- Sistema de abas com título dinâmico
+- Versionamento semântico automático
 
 ## 📄 Licença
 

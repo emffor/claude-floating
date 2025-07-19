@@ -8,9 +8,17 @@
   },
   "main": "main.js",
   "license": "MIT",
+  "_buildExamples": {
+    "patch": "yarn build → 1.0.0 → 1.0.1 (bug fixes)",
+    "minor": "yarn build:minor → 1.0.0 → 1.1.0 (new features)",
+    "major": "yarn build:major → 1.0.0 → 2.0.0 (breaking changes)",
+    "note": "Todos os comandos geram .deb automaticamente"
+  },
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --linux",
+    "build": "yarn version --patch --no-git-tag-version && electron-builder --linux",
+    "build:minor": "yarn version --minor --no-git-tag-version && electron-builder --linux",
+    "build:major": "yarn version --major --no-git-tag-version && electron-builder --linux",
     "dist": "electron-builder --linux --publish=never"
   },
   "build": {
