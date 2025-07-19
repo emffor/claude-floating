@@ -3,7 +3,8 @@ const { app, BrowserWindow, globalShortcut, session, ipcMain } = require('electr
 let windows = new Map();
 let activeWindowId = null;
 let windowOrder = [];
-let sharedBounds = { x: 100, y: 100, width: 450, height: 700 };
+// let sharedBounds = { x: 100, y: 100, width: 450, height: 700 };
+let sharedBounds = { x: 1650, y: 800, width: 800, height: 800 };
 
 function showWindow(windowId) {
   console.log(`Switching to window: ${windowId}`);
