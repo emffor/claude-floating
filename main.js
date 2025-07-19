@@ -3,21 +3,22 @@ const { app, BrowserWindow, globalShortcut, session, ipcMain } = require('electr
 let windows = new Map();
 let activeWindowId = null;
 let windowOrder = [];
+let sharedBounds = { x: 100, y: 100, width: 450, height: 700 };
 
 function showWindow(windowId) {
   console.log(`Switching to window: ${windowId}`);
   
-  // Esconder todas as outras janelas
   windows.forEach(({ window }, id) => {
     if (id !== windowId && window && !window.isDestroyed()) {
       window.hide();
     }
   });
   
-  // Mostrar janela selecionada (preserva estado)
   const windowData = windows.get(windowId);
   if (windowData && !windowData.window.isDestroyed()) {
     activeWindowId = windowId;
+    
+    windowData.window.setBounds(sharedBounds);
     windowData.window.show();
     windowData.window.focus();
     
@@ -35,6 +36,21 @@ function hideAllWindows() {
 
 function createNewTab() {
   console.log('Creating new tab');
+  
+  if (activeWindowId) {
+    const currentWindow = windows.get(activeWindowId);
+    if (currentWindow && !currentWindow.window.isDestroyed()) {
+      const currentBounds = currentWindow.window.getBounds();
+      sharedBounds = {
+        x: currentBounds.x,
+        y: currentBounds.y,
+        width: currentBounds.width,
+        height: currentBounds.height
+      };
+      console.log('Force updating shared bounds from active window:', sharedBounds);
+    }
+  }
+  
   createWindow();
 }
 
@@ -44,7 +60,6 @@ function updateAllTabBars() {
     title: data.title || 'Claude AI',
     isActive: id === activeWindowId
   }));
-
   windows.forEach(({ window }, windowId) => {
     if (window && !window.isDestroyed()) {
       updateSingleTabBar(window, windowsData);
@@ -157,7 +172,6 @@ function updateSingleTabBar(window, windowsData) {
       }
     })();
   `;
-
   window.webContents.executeJavaScript(script).catch(() => {});
 }
 
@@ -219,10 +233,10 @@ function createWindow(url = 'https://claude.ai') {
   console.log(`Creating window: ${windowId}`);
   
   const window = new BrowserWindow({
-    width: 450,
-    height: 700,
-    x: 100,
-    y: 100,
+    width: sharedBounds.width,
+    height: sharedBounds.height,
+    x: sharedBounds.x,
+    y: sharedBounds.y,
     alwaysOnTop: true,
     frame: false,
     resizable: true,
@@ -240,7 +254,6 @@ function createWindow(url = 'https://claude.ai') {
   windows.set(windowId, { window, title: 'Claude AI', url });
   windowOrder.push(windowId);
   
-  // Esconder janela ativa anterior
   if (activeWindowId) {
     const currentWindow = windows.get(activeWindowId);
     if (currentWindow && !currentWindow.window.isDestroyed()) {
@@ -252,6 +265,26 @@ function createWindow(url = 'https://claude.ai') {
   window.show();
   window.focus();
   window.loadURL(url);
+  
+  window.on('moved', () => {
+    sharedBounds = window.getBounds();
+    console.log('Window moved, updating shared bounds:', sharedBounds);
+  });
+  
+  window.on('resized', () => {
+    sharedBounds = window.getBounds();
+    console.log('Window resized, updating shared bounds:', sharedBounds);
+  });
+
+  window.on('resize', () => {
+    sharedBounds = window.getBounds();
+    console.log('Window resize event, updating shared bounds:', sharedBounds);
+  });
+
+  window.on('blur', () => {
+    sharedBounds = window.getBounds();
+    console.log('Window blur, saving bounds:', sharedBounds);
+  });
   
   window.webContents.on('dom-ready', () => {
     injectTabSystem(window, windowId);
@@ -282,7 +315,6 @@ function createWindow(url = 'https://claude.ai') {
   return window;
 }
 
-// IPC handlers
 ipcMain.on('new-tab', createNewTab);
 ipcMain.on('close-tab', (event, windowId) => closeTab(windowId));
 ipcMain.on('switch-tab', (event, windowId) => showWindow(windowId));
@@ -307,6 +339,4 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-app.on('window-all-closed', () => {
-  // Manter rodando
-});
+app.on('window-all-closed', () => {});
