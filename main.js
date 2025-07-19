@@ -3,28 +3,34 @@ const { app, BrowserWindow, globalShortcut, session, ipcMain } = require('electr
 let windows = new Map();
 let activeWindowId = null;
 let windowOrder = [];
-let sharedWindow = null; // Uma única janela física para todas as abas
 
 function showWindow(windowId) {
   console.log(`Switching to window: ${windowId}`);
   
+  // Esconder todas as outras janelas
+  windows.forEach(({ window }, id) => {
+    if (id !== windowId && window && !window.isDestroyed()) {
+      window.hide();
+    }
+  });
+  
+  // Mostrar janela selecionada (preserva estado)
   const windowData = windows.get(windowId);
-  if (windowData && sharedWindow && !sharedWindow.isDestroyed()) {
+  if (windowData && !windowData.window.isDestroyed()) {
     activeWindowId = windowId;
+    windowData.window.show();
+    windowData.window.focus();
     
-    // Carregar URL da aba selecionada na janela compartilhada
-    sharedWindow.loadURL(windowData.url);
-    sharedWindow.show();
-    sharedWindow.focus();
-    
-    setTimeout(() => updateAllTabBars(), 500);
+    setTimeout(() => updateAllTabBars(), 200);
   }
 }
 
 function hideAllWindows() {
-  if (sharedWindow && !sharedWindow.isDestroyed()) {
-    sharedWindow.hide();
-  }
+  windows.forEach(({ window }) => {
+    if (window && !window.isDestroyed()) {
+      window.hide();
+    }
+  });
 }
 
 function createNewTab() {
@@ -39,20 +45,19 @@ function updateAllTabBars() {
     isActive: id === activeWindowId
   }));
 
-  if (sharedWindow && !sharedWindow.isDestroyed()) {
-    updateSingleTabBar(sharedWindow, windowsData);
-  }
+  windows.forEach(({ window }, windowId) => {
+    if (window && !window.isDestroyed()) {
+      updateSingleTabBar(window, windowsData);
+    }
+  });
 }
 
 function updateSingleTabBar(window, windowsData) {
   const script = `
     (function() {
       try {
-        console.log('Updating tab bar for window:', ${JSON.stringify(windowsData)});
-        
         let tabBar = document.querySelector('.electron-tabs');
         if (!tabBar) {
-          console.log('Creating new tab bar');
           tabBar = document.createElement('div');
           tabBar.className = 'electron-tabs';
           tabBar.style.cssText = \`
@@ -72,16 +77,8 @@ function updateSingleTabBar(window, windowsData) {
         tabBar.innerHTML = '';
         
         const windowsData = ${JSON.stringify(windowsData)};
-        console.log('Windows data:', windowsData);
         
-        if (!windowsData || windowsData.length === 0) {
-          console.log('No windows data available');
-          return 'No windows data';
-        }
-        
-        windowsData.forEach(function(windowData, index) {
-          console.log('Creating tab for:', windowData.title);
-          
+        windowsData.forEach(function(windowData) {
           const tab = document.createElement('div');
           tab.className = 'electron-tab' + (windowData.isActive ? ' active' : '');
           tab.style.cssText = \`
@@ -117,7 +114,6 @@ function updateSingleTabBar(window, windowsData) {
             \`;
             closeBtn.onclick = function(e) {
               e.stopPropagation();
-              console.log('Close clicked for:', windowData.id);
               if (typeof require !== 'undefined') {
                 require('electron').ipcRenderer.send('close-tab', windowData.id);
               }
@@ -126,7 +122,6 @@ function updateSingleTabBar(window, windowsData) {
           }
           
           tab.onclick = function() {
-            console.log('Tab clicked:', windowData.id);
             if (typeof require !== 'undefined') {
               require('electron').ipcRenderer.send('switch-tab', windowData.id);
             }
@@ -150,29 +145,20 @@ function updateSingleTabBar(window, windowsData) {
           min-width: 35px !important;
         \`;
         newTabBtn.onclick = function() {
-          console.log('New tab clicked');
           if (typeof require !== 'undefined') {
             require('electron').ipcRenderer.send('new-tab');
           }
         };
         tabBar.appendChild(newTabBtn);
         
-        console.log('Tab bar updated successfully with', windowsData.length, 'tabs');
         return 'Tab bar updated successfully';
       } catch (error) {
-        console.error('Tab bar error:', error);
         return 'Error: ' + error.message;
       }
     })();
   `;
 
-  window.webContents.executeJavaScript(script)
-    .then(result => {
-      console.log('Tab bar result:', result);
-    })
-    .catch(err => {
-      console.log('Tab bar error:', err.message);
-    });
+  window.webContents.executeJavaScript(script).catch(() => {});
 }
 
 function injectTabSystem(window, windowId) {
@@ -184,61 +170,6 @@ function injectTabSystem(window, windowId) {
     .electron-tabs * { 
       -webkit-app-region: no-drag !important; 
     }
-    
-    .electron-tabs {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 35px;
-      background: #1a1a1a;
-      display: flex;
-      z-index: 9999;
-      border-bottom: 1px solid #333;
-    }
-    .electron-tab {
-      background: #2a2a2a;
-      color: #ccc;
-      padding: 8px 15px;
-      border-right: 1px solid #444;
-      cursor: pointer;
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      transition: background 0.2s;
-    }
-    .electron-tab.active { 
-      background: #0066cc; 
-      color: white;
-    }
-    .electron-tab:hover:not(.active) { background: #3a3a3a; }
-    .electron-tab-close {
-      margin-left: 8px;
-      color: #999;
-      font-weight: bold;
-      padding: 0 4px;
-      border-radius: 3px;
-    }
-    .electron-tab-close:hover { 
-      color: #ff6b6b; 
-      background: rgba(255,107,107,0.2);
-    }
-    .electron-new-tab {
-      background: #333;
-      color: #ccc;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 35px;
-    }
-    .electron-new-tab:hover { background: #444; }
   `);
   
   window.webContents.executeJavaScript(`
@@ -257,9 +188,7 @@ function injectTabSystem(window, windowId) {
       setInterval(checkTitle, 3000);
       checkTitle();
     })();
-  `).catch(err => {
-    console.log('Error injecting title monitor:', err.message);
-  });
+  `).catch(() => {});
 }
 
 function closeTab(windowId) {
@@ -268,17 +197,10 @@ function closeTab(windowId) {
     return;
   }
   
-  console.log(`Closing tab ${windowId}`);
-  windows.delete(windowId);
-  windowOrder = windowOrder.filter(id => id !== windowId);
-  
-  if (activeWindowId === windowId) {
-    activeWindowId = windowOrder[0] || null;
-    if (activeWindowId) {
-      showWindow(activeWindowId);
-    }
-  } else {
-    updateAllTabBars();
+  const windowData = windows.get(windowId);
+  if (windowData) {
+    console.log(`Closing window ${windowId}`);
+    windowData.window.close();
   }
 }
 
@@ -292,73 +214,72 @@ function updateWindowTitle(windowId, title) {
 
 function createWindow(url = 'https://claude.ai') {
   const windowId = Date.now().toString();
+  const persistentSession = session.fromPartition('persist:claude-session');
   
   console.log(`Creating window: ${windowId}`);
   
-  // Criar janela física apenas na primeira vez
-  if (!sharedWindow) {
-    const persistentSession = session.fromPartition('persist:claude-session');
-    
-    sharedWindow = new BrowserWindow({
-      width: 450,
-      height: 700,
-      x: 100,
-      y: 100,
-      alwaysOnTop: true,
-      frame: false,
-      resizable: true,
-      movable: true,
-      show: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-        webSecurity: false,
-        session: persistentSession,
-        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
-    sharedWindow.webContents.on('dom-ready', () => {
-      console.log('DOM ready for shared window');
-      injectTabSystem(sharedWindow, activeWindowId);
-      setTimeout(() => {
-        console.log('Updating tabs after DOM ready');
-        updateAllTabBars();
-      }, 2000);
-    });
-    
-    sharedWindow.webContents.on('before-input-event', (event, input) => {
-      if (input.key === 'Escape') hideAllWindows();
-      if (input.control && input.key === 't') createNewTab();
-      if (input.control && input.key === 'w') closeTab(activeWindowId);
-    });
-
-    sharedWindow.on('closed', () => {
-      console.log('Shared window closed');
-      sharedWindow = null;
-      windows.clear();
-      windowOrder = [];
-      activeWindowId = null;
-    });
-  }
-  
-  // Adicionar aba virtual
-  windows.set(windowId, { 
-    title: 'Claude AI', 
-    url: url
+  const window = new BrowserWindow({
+    width: 450,
+    height: 700,
+    x: 100,
+    y: 100,
+    alwaysOnTop: true,
+    frame: false,
+    resizable: true,
+    movable: true,
+    show: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false,
+      session: persistentSession,
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
   });
+
+  windows.set(windowId, { window, title: 'Claude AI', url });
   windowOrder.push(windowId);
   
-  // Ativar nova aba
-  activeWindowId = windowId;
-  
-  if (sharedWindow) {
-    sharedWindow.loadURL(url);
-    sharedWindow.show();
-    sharedWindow.focus();
+  // Esconder janela ativa anterior
+  if (activeWindowId) {
+    const currentWindow = windows.get(activeWindowId);
+    if (currentWindow && !currentWindow.window.isDestroyed()) {
+      currentWindow.window.hide();
+    }
   }
   
-  return sharedWindow;
+  activeWindowId = windowId;
+  window.show();
+  window.focus();
+  window.loadURL(url);
+  
+  window.webContents.on('dom-ready', () => {
+    injectTabSystem(window, windowId);
+    setTimeout(() => updateAllTabBars(), 1000);
+  });
+  
+  window.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'Escape') hideAllWindows();
+    if (input.control && input.key === 't') createNewTab();
+    if (input.control && input.key === 'w') closeTab(windowId);
+  });
+
+  window.on('closed', () => {
+    console.log(`Window ${windowId} closed`);
+    windows.delete(windowId);
+    windowOrder = windowOrder.filter(id => id !== windowId);
+    
+    if (activeWindowId === windowId) {
+      activeWindowId = windowOrder[0] || null;
+      if (activeWindowId) {
+        showWindow(activeWindowId);
+      }
+    } else {
+      updateAllTabBars();
+    }
+  });
+
+  return window;
 }
 
 // IPC handlers
@@ -371,9 +292,10 @@ app.whenReady().then(() => {
   createWindow();
   
   globalShortcut.register('Ctrl+Shift+C', () => {
-    if (sharedWindow?.isVisible()) {
+    const activeWindow = windows.get(activeWindowId);
+    if (activeWindow?.window.isVisible()) {
       hideAllWindows();
-    } else if (sharedWindow && activeWindowId) {
+    } else if (activeWindowId) {
       showWindow(activeWindowId);
     }
   });
