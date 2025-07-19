@@ -3,61 +3,33 @@ const { app, BrowserWindow, globalShortcut, session, ipcMain } = require('electr
 let windows = new Map();
 let activeWindowId = null;
 let windowOrder = [];
-let windowPosition = { x: 100, y: 100 }; 
+let sharedWindow = null; // Uma única janela física para todas as abas
 
 function showWindow(windowId) {
   console.log(`Switching to window: ${windowId}`);
   
-  if (activeWindowId && activeWindowId !== windowId) {
-    const currentWindow = windows.get(activeWindowId);
-    if (currentWindow && !currentWindow.window.isDestroyed()) {
-      const bounds = currentWindow.window.getBounds();
-      currentWindow.lastBounds = bounds;
-      currentWindow.window.hide();
-    }
-  }
-  
   const windowData = windows.get(windowId);
-  if (windowData && !windowData.window.isDestroyed()) {
+  if (windowData && sharedWindow && !sharedWindow.isDestroyed()) {
     activeWindowId = windowId;
     
-    if (windowData.lastBounds) {
-      windowData.window.setBounds(windowData.lastBounds);
-    }
+    // Carregar URL da aba selecionada na janela compartilhada
+    sharedWindow.loadURL(windowData.url);
+    sharedWindow.show();
+    sharedWindow.focus();
     
-    windowData.window.show();
-    windowData.window.focus();
-    
-    setTimeout(() => updateAllTabBars(), 200);
+    setTimeout(() => updateAllTabBars(), 500);
   }
 }
 
 function hideAllWindows() {
-  if (activeWindowId) {
-    const activeWindow = windows.get(activeWindowId);
-    if (activeWindow && !activeWindow.window.isDestroyed()) {
-      activeWindow.lastBounds = activeWindow.window.getBounds();
-    }
+  if (sharedWindow && !sharedWindow.isDestroyed()) {
+    sharedWindow.hide();
   }
-  
-  windows.forEach(({ window }) => {
-    if (window && !window.isDestroyed()) {
-      window.hide();
-    }
-  });
 }
 
 function createNewTab() {
   console.log('Creating new tab');
-  
-  if (activeWindowId) {
-    const currentWindow = windows.get(activeWindowId);
-    if (currentWindow && !currentWindow.window.isDestroyed()) {
-      currentWindow.lastBounds = currentWindow.window.getBounds();
-    }
-  }
-  
-  const newWindow = createWindow();
+  createWindow();
 }
 
 function updateAllTabBars() {
@@ -67,11 +39,9 @@ function updateAllTabBars() {
     isActive: id === activeWindowId
   }));
 
-  windows.forEach(({ window }, windowId) => {
-    if (window && !window.isDestroyed()) {
-      updateSingleTabBar(window, windowsData);
-    }
-  });
+  if (sharedWindow && !sharedWindow.isDestroyed()) {
+    updateSingleTabBar(sharedWindow, windowsData);
+  }
 }
 
 function updateSingleTabBar(window, windowsData) {
@@ -298,10 +268,17 @@ function closeTab(windowId) {
     return;
   }
   
-  const windowData = windows.get(windowId);
-  if (windowData) {
-    console.log(`Closing window ${windowId}`);
-    windowData.window.close();
+  console.log(`Closing tab ${windowId}`);
+  windows.delete(windowId);
+  windowOrder = windowOrder.filter(id => id !== windowId);
+  
+  if (activeWindowId === windowId) {
+    activeWindowId = windowOrder[0] || null;
+    if (activeWindowId) {
+      showWindow(activeWindowId);
+    }
+  } else {
+    updateAllTabBars();
   }
 }
 
@@ -315,92 +292,76 @@ function updateWindowTitle(windowId, title) {
 
 function createWindow(url = 'https://claude.ai') {
   const windowId = Date.now().toString();
-  const persistentSession = session.fromPartition('persist:claude-session');
   
   console.log(`Creating window: ${windowId}`);
   
-  const offset = windowOrder.length * 30;
+  // Criar janela física apenas na primeira vez
+  if (!sharedWindow) {
+    const persistentSession = session.fromPartition('persist:claude-session');
+    
+    sharedWindow = new BrowserWindow({
+      width: 450,
+      height: 700,
+      x: 100,
+      y: 100,
+      alwaysOnTop: true,
+      frame: false,
+      resizable: true,
+      movable: true,
+      show: false,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+        webSecurity: false,
+        session: persistentSession,
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    sharedWindow.webContents.on('dom-ready', () => {
+      console.log('DOM ready for shared window');
+      injectTabSystem(sharedWindow, activeWindowId);
+      setTimeout(() => {
+        console.log('Updating tabs after DOM ready');
+        updateAllTabBars();
+      }, 2000);
+    });
+    
+    sharedWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'Escape') hideAllWindows();
+      if (input.control && input.key === 't') createNewTab();
+      if (input.control && input.key === 'w') closeTab(activeWindowId);
+    });
+
+    sharedWindow.on('closed', () => {
+      console.log('Shared window closed');
+      sharedWindow = null;
+      windows.clear();
+      windowOrder = [];
+      activeWindowId = null;
+    });
+  }
   
-  const window = new BrowserWindow({
-    width: 450,
-    height: 700,
-    x: windowPosition.x + offset,
-    y: windowPosition.y + offset,
-    alwaysOnTop: true,
-    frame: false,
-    resizable: true,
-    movable: true,
-    show: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
-      session: persistentSession,
-      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-  });
-
-  const initialBounds = {
-    x: windowPosition.x + offset,
-    y: windowPosition.y + offset,
-    width: 450,
-    height: 700
-  };
-
+  // Adicionar aba virtual
   windows.set(windowId, { 
-    window, 
     title: 'Claude AI', 
-    url,
-    lastBounds: initialBounds 
+    url: url
   });
   windowOrder.push(windowId);
   
-  if (activeWindowId) {
-    const currentWindow = windows.get(activeWindowId);
-    if (currentWindow && !currentWindow.window.isDestroyed()) {
-      currentWindow.lastBounds = currentWindow.window.getBounds();
-      currentWindow.window.hide();
-    }
+  // Ativar nova aba
+  activeWindowId = windowId;
+  
+  if (sharedWindow) {
+    sharedWindow.loadURL(url);
+    sharedWindow.show();
+    sharedWindow.focus();
   }
   
-  activeWindowId = windowId;
-  window.show();
-  window.focus();
-  window.loadURL(url);
-  
-window.webContents.on('dom-ready', () => {
-  console.log('DOM ready for window:', windowId);
-  injectTabSystem(window, windowId);
-  setTimeout(() => {
-    console.log('Updating tabs after DOM ready');
-    updateAllTabBars();
-  }, 2000); 
-});
-  
-  window.webContents.on('before-input-event', (event, input) => {
-    if (input.key === 'Escape') hideAllWindows();
-    if (input.control && input.key === 't') createNewTab();
-    if (input.control && input.key === 'w') closeTab(windowId);
-  });
-
-  window.on('closed', () => {
-    console.log(`Window ${windowId} closed`);
-    windows.delete(windowId);
-    windowOrder = windowOrder.filter(id => id !== windowId);
-    
-    if (activeWindowId === windowId) {
-      activeWindowId = windowOrder[0] || null;
-      if (activeWindowId) {
-        showWindow(activeWindowId);
-      }
-    } else {
-      updateAllTabBars();
-    }
-  });
-
-  return window;
+  return sharedWindow;
 }
 
+// IPC handlers
 ipcMain.on('new-tab', createNewTab);
 ipcMain.on('close-tab', (event, windowId) => closeTab(windowId));
 ipcMain.on('switch-tab', (event, windowId) => showWindow(windowId));
@@ -410,10 +371,9 @@ app.whenReady().then(() => {
   createWindow();
   
   globalShortcut.register('Ctrl+Shift+C', () => {
-    const activeWindow = windows.get(activeWindowId);
-    if (activeWindow?.window.isVisible()) {
+    if (sharedWindow?.isVisible()) {
       hideAllWindows();
-    } else if (activeWindowId) {
+    } else if (sharedWindow && activeWindowId) {
       showWindow(activeWindowId);
     }
   });
@@ -426,5 +386,5 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-  // #Manter rodando#
+  // Manter rodando
 });
