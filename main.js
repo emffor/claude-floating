@@ -177,12 +177,29 @@ function updateSingleTabBar(window, windowsData) {
 
 function injectTabSystem(window, windowId) {
   window.webContents.insertCSS(`
-    body { -webkit-app-region: drag; margin-top: 35px !important; }
+    html, body { 
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      height: 100vh !important;
+      -webkit-app-region: drag; 
+    }
+    
+    body { 
+      margin-top: 35px !important;
+      height: calc(100vh - 35px) !important;
+    }
     
     input, textarea, button, a, [contenteditable],
     div[role], section, article, nav, main,
     .electron-tabs * { 
       -webkit-app-region: no-drag !important; 
+    }
+    
+    main, #__next, [data-testid="main-content"] {
+      height: 100% !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
     }
   `);
   
