@@ -1,6 +1,6 @@
 {
   "name": "claude-floating",
-  "version": "1.0.8",
+  "version": "1.0.12",
   "description": "Claude AI floating window for Ubuntu",
   "author": {
     "name": "emfeloan",
@@ -22,7 +22,9 @@
     "build": "yarn version --patch --no-git-tag-version && electron-builder --linux",
     "build:minor": "yarn version --minor --no-git-tag-version && electron-builder --linux",
     "build:major": "yarn version --major --no-git-tag-version && electron-builder --linux",
-    "dist": "electron-builder --linux --publish=never"
+    "dist": "electron-builder --linux --publish=never",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "build": {
     "appId": "com.emfeloan.claude-floating",
@@ -62,6 +64,7 @@
   },
   "devDependencies": {
     "electron": "^37.2.3",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "prettier": "^3.6.2"
   }
 }

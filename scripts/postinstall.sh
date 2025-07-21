@@ -2,6 +2,7 @@
 
 # Criar symlink para o executável
 ln -sf "/opt/Claude Floating/claude-floating" /usr/bin/claude-floating
+chmod +x /usr/bin/claude-floating
 
 # Configurar autostart para todos os usuários
 for user_home in /home/*; do
@@ -16,13 +17,16 @@ for user_home in /home/*; do
             # Criar diretório com permissões corretas
             sudo -u "$username" mkdir -p "$autostart_dir" 2>/dev/null || true
             
-            # Criar arquivo desktop com permissões corretas
+            # Criar arquivo desktop com path completo
             sudo -u "$username" tee "$desktop_file" > /dev/null 2>&1 << 'DESKTOP_EOF' || true
 [Desktop Entry]
 Name=Claude Floating
-Exec=claude-floating
+Comment=Claude AI floating window
+Exec=/usr/bin/claude-floating --hidden
 Type=Application
 Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
 StartupNotify=false
 Terminal=false
 Categories=Utility;
