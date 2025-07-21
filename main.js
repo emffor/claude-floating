@@ -264,6 +264,7 @@ function createWindow(url = 'https://claude.ai') {
       nodeIntegration: true,
       contextIsolation: false,
       webSecurity: false,
+      sandbox: false, 
       session: persistentSession,
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
@@ -341,23 +342,23 @@ ipcMain.on('update-title', (event, windowId, title) => updateWindowTitle(windowI
 app.whenReady().then(() => {
   createWindow();
   
-globalShortcut.register('Alt+Right', () => {
-  const activeWindow = windows.get(activeWindowId);
-  if (activeWindow?.window.isVisible()) {
-    hideAllWindows();
-  } else if (activeWindowId) {
-    showWindow(activeWindowId);
-  }
-});
+  globalShortcut.register('Alt+Right', () => {
+    const activeWindow = windows.get(activeWindowId);
+    if (activeWindow?.window.isVisible()) {
+      hideAllWindows();
+    } else if (activeWindowId) {
+      showWindow(activeWindowId);
+    }
+  });
 
-globalShortcut.register('Alt+Space', () => {
-  const activeWindow = windows.get(activeWindowId);
-  if (activeWindow?.window.isVisible()) {
-    hideAllWindows();
-  } else if (activeWindowId) {
-    showWindow(activeWindowId);
-  }
-});
+  globalShortcut.register('Alt+Space', () => {
+    const activeWindow = windows.get(activeWindowId);
+    if (activeWindow?.window.isVisible()) {
+      hideAllWindows();
+    } else if (activeWindowId) {
+      showWindow(activeWindowId);
+    }
+  });
   
   globalShortcut.register('Ctrl+T', createNewTab);
 });
