@@ -1,6 +1,6 @@
 {
   "name": "claude-floating",
-  "version": "1.0.12",
+  "version": "1.0.14",
   "description": "Claude AI floating window for Ubuntu",
   "author": {
     "name": "emfeloan",
@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.emfeloan.claude-floating",
-    "productName": "Claude Floating",
+    "productName": "claude-floating",
     "directories": {
       "output": "dist"
     },
