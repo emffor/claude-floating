@@ -1,4 +1,3 @@
-cat > scripts/postinstall.sh << 'EOF'
 #!/bin/bash
 
 # Criar symlink para o executável
@@ -27,4 +26,3 @@ EOF
         sudo -u "$username" chmod +x "$autostart_dir/claude-floating.desktop"
     fi
 done
-EOF

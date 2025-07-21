@@ -1,5 +1,3 @@
-# Criar arquivo
-cat > scripts/preremove.sh << 'EOF'
 #!/bin/bash
 
 # Remover symlink
@@ -14,10 +12,3 @@ for user_home in /home/*; do
         fi
     fi
 done
-EOF
-
-# Dar permissões
-chmod +x scripts/postinstall.sh scripts/preremove.sh
-
-# Verificar
-ls -la scripts/
