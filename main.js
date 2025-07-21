@@ -341,14 +341,23 @@ ipcMain.on('update-title', (event, windowId, title) => updateWindowTitle(windowI
 app.whenReady().then(() => {
   createWindow();
   
-  globalShortcut.register('Ctrl+Shift+C', () => {
-    const activeWindow = windows.get(activeWindowId);
-    if (activeWindow?.window.isVisible()) {
-      hideAllWindows();
-    } else if (activeWindowId) {
-      showWindow(activeWindowId);
-    }
-  });
+globalShortcut.register('Alt+Right', () => {
+  const activeWindow = windows.get(activeWindowId);
+  if (activeWindow?.window.isVisible()) {
+    hideAllWindows();
+  } else if (activeWindowId) {
+    showWindow(activeWindowId);
+  }
+});
+
+globalShortcut.register('Alt+Space', () => {
+  const activeWindow = windows.get(activeWindowId);
+  if (activeWindow?.window.isVisible()) {
+    hideAllWindows();
+  } else if (activeWindowId) {
+    showWindow(activeWindowId);
+  }
+});
   
   globalShortcut.register('Ctrl+T', createNewTab);
 });
