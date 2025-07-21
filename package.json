@@ -1,6 +1,6 @@
 {
   "name": "claude-floating",
-  "version": "1.0.3",
+  "version": "1.0.0",
   "description": "Claude AI floating window for Ubuntu",
   "author": {
     "name": "emfeloan",
@@ -33,7 +33,9 @@
     "linux": {
       "target": {
         "target": "deb",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       },
       "category": "Utility",
       "executableName": "claude-floating",
@@ -49,7 +51,7 @@
     },
     "deb": {
       "afterInstall": "scripts/postinstall.sh",
-      "beforeRemove": "scripts/preremove.sh"
+      "afterRemove": "scripts/preremove.sh"
     },
     "icon": "icon.png",
     "files": [
