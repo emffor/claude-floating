@@ -7,17 +7,17 @@ ln -sf "/opt/Claude Floating/claude-floating" /usr/bin/claude-floating
 for user_home in /home/*; do
     if [ -d "$user_home" ] && [ "$(basename "$user_home")" != "lost+found" ]; then
         username=$(basename "$user_home")
-        autostart_dir="$user_home/.config/autostart"
-        desktop_file="$autostart_dir/claude-floating.desktop"
+        user_id=$(id -u "$username" 2>/dev/null || echo "")
         
-        # Criar diretório se não existir
-        if [ ! -d "$autostart_dir" ]; then
+        if [ -n "$user_id" ]; then
+            autostart_dir="$user_home/.config/autostart"
+            desktop_file="$autostart_dir/claude-floating.desktop"
+            
+            # Criar diretório com permissões corretas
             sudo -u "$username" mkdir -p "$autostart_dir" 2>/dev/null || true
-        fi
-        
-        # Criar arquivo desktop apenas se diretório for acessível
-        if [ -w "$autostart_dir" ] || sudo -u "$username" test -w "$autostart_dir" 2>/dev/null; then
-            sudo -u "$username" cat > "$desktop_file" << 'EOF' 2>/dev/null || true
+            
+            # Criar arquivo desktop com permissões corretas
+            sudo -u "$username" tee "$desktop_file" > /dev/null 2>&1 << 'DESKTOP_EOF' || true
 [Desktop Entry]
 Name=Claude Floating
 Exec=claude-floating
@@ -27,11 +27,12 @@ StartupNotify=false
 Terminal=false
 Categories=Utility;
 StartupWMClass=claude-floating
-EOF
+DESKTOP_EOF
             
-            # Definir permissões se arquivo foi criado
+            # Garantir permissões corretas
             if [ -f "$desktop_file" ]; then
                 sudo -u "$username" chmod +x "$desktop_file" 2>/dev/null || true
+                chown "$username:$username" "$desktop_file" 2>/dev/null || true
             fi
         fi
     fi
