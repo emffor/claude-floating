@@ -187,51 +187,132 @@ function updateSingleTabBar(window, windowsData) {
 
 function injectTabSystem(window, windowId) {
   window.webContents.insertCSS(`
-   html, body { 
-     margin: 0 !important;
-     padding: 0 !important;
-     overflow: hidden !important;
-     height: 100vh !important;
-     -webkit-app-region: drag; 
-   }
-   
-   body { 
-     margin-top: 35px !important;
-     height: calc(100vh - 35px) !important;
-   }
-   
-   input, textarea, button, a, [contenteditable],
-   div[role], section, article, nav, main,
-   .electron-tabs * { 
-     -webkit-app-region: no-drag !important; 
-   }
-   
-   main, #__next, [data-testid="main-content"] {
-     height: 100% !important;
-     overflow-y: auto !important;
-     overflow-x: hidden !important;
-   }
- `)
+    html, body { 
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-app-region: drag; 
+    }
+    
+    body { 
+      padding-top: 35px !important;
+    }
+    
+    /* Tab bar fixo */
+    .electron-tabs {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: 35px !important;
+      z-index: 99999 !important;
+      -webkit-app-region: no-drag !important;
+    }
+    
+    body {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      height: auto !important;
+      min-height: 100vh !important;
+    }
+    
+    input, 
+    textarea, 
+    button, 
+    a, 
+    [contenteditable],
+    [role="button"],
+    [role="textbox"],
+    [tabindex],
+    select,
+    div,
+    section,
+    article,
+    main,
+    nav,
+    header,
+    footer,
+    aside,
+    form,
+    span,
+    p,
+    h1, h2, h3, h4, h5, h6,
+    ul, ol, li,
+    .electron-tabs * {
+      -webkit-app-region: no-drag !important;
+    }
+    
+    html {
+      -webkit-app-region: drag !important;
+    }
+    
+    main, 
+    #__next, 
+    [data-testid], 
+    .min-h-screen,
+    .h-screen,
+    .flex,
+    .grid,
+    [role="main"] {
+      height: auto !important;
+      min-height: auto !important;
+      max-height: none !important;
+    }
+  `)
 
   window.webContents
     .executeJavaScript(
       `
-   (function() {
-     let lastTitle = document.title;
-     
-     function checkTitle() {
-       if (document.title !== lastTitle) {
-         lastTitle = document.title;
-         if (typeof require !== 'undefined') {
-           require('electron').ipcRenderer.send('update-title', '${windowId}', document.title);
-         }
-       }
-     }
-     
-     setInterval(checkTitle, 3000);
-     checkTitle();
-   })();
- `,
+    (function() {
+      // Limpar estilos inline que forçam altura
+      const elements = document.querySelectorAll('*');
+      elements.forEach(el => {
+        if (el.style.height && el.style.height.includes('calc(100vh')) {
+          el.style.height = 'auto';
+        }
+        if (el.style.minHeight && el.style.minHeight.includes('calc(100vh')) {
+          el.style.minHeight = 'auto';
+        }
+        if (el.style.maxHeight && el.style.maxHeight.includes('calc(100vh')) {
+          el.style.maxHeight = 'none';
+        }
+      });
+      
+      // Observer para prevenir altura forçada
+      const observer = new MutationObserver(() => {
+        const problematicElements = document.querySelectorAll('[style*="calc(100vh"]');
+        problematicElements.forEach(el => {
+          if (!el.classList.contains('electron-tabs')) {
+            el.style.height = 'auto';
+            el.style.minHeight = 'auto';  
+            el.style.maxHeight = 'none';
+          }
+        });
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style']
+      });
+      
+      // Título tracking
+      let lastTitle = document.title;
+      function checkTitle() {
+        if (document.title !== lastTitle) {
+          lastTitle = document.title;
+          if (typeof require !== 'undefined') {
+            require('electron').ipcRenderer.send('update-title', '${windowId}', document.title);
+          }
+        }
+      }
+      
+      setInterval(checkTitle, 3000);
+      checkTitle();
+      
+      return 'Natural layout preserved';
+    })();
+  `,
     )
     .catch(() => {})
 }
