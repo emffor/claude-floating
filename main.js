@@ -257,7 +257,7 @@ function updateWindowTitle(windowId, title) {
   }
 }
 
-function createWindow(url = 'https://claude.ai') {
+function createWindow(url = 'https://claude.ai/new') {
   const windowId = Date.now().toString()
   const persistentSession = session.fromPartition('persist:claude-session')
 
@@ -356,16 +356,13 @@ ipcMain.on('update-title', (event, windowId, title) =>
 )
 
 app.whenReady().then(() => {
-  // Verificar se deve iniciar oculto
   const shouldStartHidden = process.argv.includes('--hidden')
 
-  // Só criar janela se NÃO for --hidden
   if (!shouldStartHidden) {
     createWindow()
   }
 
   globalShortcut.register('Alt+Right', () => {
-    // Se não há janelas, criar uma
     if (windows.size === 0) {
       createWindow()
     } else {
@@ -379,7 +376,6 @@ app.whenReady().then(() => {
   })
 
   globalShortcut.register('Alt+Space', () => {
-    // Se não há janelas, criar uma
     if (windows.size === 0) {
       createWindow()
     } else {
