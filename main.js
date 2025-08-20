@@ -426,19 +426,6 @@ app.whenReady().then(() => {
     createWindow()
   }
 
-  globalShortcut.register('Alt+Right', () => {
-    if (windows.size === 0) {
-      createWindow()
-    } else {
-      const activeWindow = windows.get(activeWindowId)
-      if (activeWindow?.window.isVisible()) {
-        hideAllWindows()
-      } else if (activeWindowId) {
-        showWindow(activeWindowId)
-      }
-    }
-  })
-
   globalShortcut.register('Alt+Space', () => {
     if (windows.size === 0) {
       createWindow()
