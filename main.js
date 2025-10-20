@@ -6,10 +6,16 @@ const {
   ipcMain,
 } = require('electron')
 
+// Mapa de serviços de IA
+const AI_SERVICES = {
+  chatgpt: 'https://chat.openai.com/',
+  claude: 'https://claude.ai/new',
+  perplexity: 'https://www.perplexity.ai/',
+}
+
 let windows = new Map()
 let activeWindowId = null
 let windowOrder = []
-// let sharedBounds = { x: 100, y: 100, width: 450, height: 700 };
 let sharedBounds = { x: 1650, y: 800, width: 800, height: 800 }
 
 function showWindow(windowId) {
@@ -41,8 +47,8 @@ function hideAllWindows() {
   })
 }
 
-function createNewTab() {
-  console.log('Creating new tab')
+function createNewTab(service = 'chatgpt') {
+  console.log('Creating new tab with service:', service)
 
   if (activeWindowId) {
     const currentWindow = windows.get(activeWindowId)
@@ -61,7 +67,8 @@ function createNewTab() {
     }
   }
 
-  createWindow()
+  const url = AI_SERVICES[service] || AI_SERVICES.chatgpt
+  createWindow(url)
 }
 
 function updateAllTabBars() {
@@ -93,7 +100,7 @@ function updateSingleTabBar(window, windowsData) {
            height: 35px !important;
            background: #1a1a1a !important;
            display: flex !important;
-           z-index: 9999 !important;
+           z-index: 999999 !important;
            border-bottom: 1px solid #333 !important;
          \`;
          document.body.prepend(tabBar);
@@ -155,6 +162,13 @@ function updateSingleTabBar(window, windowsData) {
          tabBar.appendChild(tab);
        });
        
+       // Container para botão + e menu
+       const newTabContainer = document.createElement('div');
+       newTabContainer.style.cssText = \`
+         position: relative !important;
+         display: flex !important;
+       \`;
+       
        const newTabBtn = document.createElement('div');
        newTabBtn.className = 'electron-new-tab';
        newTabBtn.textContent = '+';
@@ -168,13 +182,82 @@ function updateSingleTabBar(window, windowsData) {
          align-items: center !important;
          justify-content: center !important;
          min-width: 35px !important;
+         transition: background 0.2s !important;
        \`;
-       newTabBtn.onclick = function() {
-         if (typeof require !== 'undefined') {
-           require('electron').ipcRenderer.send('new-tab');
-         }
+       newTabBtn.onmouseenter = function() {
+         newTabBtn.style.background = '#444 !important';
        };
-       tabBar.appendChild(newTabBtn);
+       newTabBtn.onmouseleave = function() {
+         newTabBtn.style.background = '#333 !important';
+       };
+       
+       // Menu de seleção
+       const menu = document.createElement('div');
+       menu.className = 'electron-service-menu';
+       menu.style.cssText = \`
+         display: none !important;
+         position: absolute !important;
+         top: 35px !important;
+         right: 0 !important;
+         background: #2a2a2a !important;
+         border: 1px solid #444 !important;
+         border-radius: 4px !important;
+         overflow: hidden !important;
+         z-index: 999999 !important;
+         box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+       \`;
+       
+       const services = [
+         { name: 'ChatGPT', key: 'chatgpt' },
+         { name: 'Claude', key: 'claude' },
+         { name: 'Perplexity', key: 'perplexity' }
+       ];
+       
+       services.forEach(function(service) {
+         const item = document.createElement('div');
+         item.textContent = service.name;
+         item.style.cssText = \`
+           padding: 10px 20px !important;
+           color: #ccc !important;
+           cursor: pointer !important;
+           white-space: nowrap !important;
+           font-size: 12px !important;
+           transition: all 0.2s !important;
+         \`;
+         item.onmouseenter = function() {
+           item.style.background = '#0066cc !important';
+           item.style.color = 'white !important';
+         };
+         item.onmouseleave = function() {
+           item.style.background = 'transparent !important';
+           item.style.color = '#ccc !important';
+         };
+         item.onclick = function(e) {
+           e.stopPropagation();
+           if (typeof require !== 'undefined') {
+             require('electron').ipcRenderer.send('new-tab', service.key);
+           }
+           menu.style.display = 'none';
+         };
+         menu.appendChild(item);
+       });
+       
+       newTabBtn.onclick = function(e) {
+         e.stopPropagation();
+         const isVisible = menu.style.display === 'block';
+         menu.style.display = isVisible ? 'none' : 'block';
+       };
+       
+       // Fecha menu ao clicar fora
+       document.addEventListener('click', function(e) {
+         if (!newTabContainer.contains(e.target)) {
+           menu.style.display = 'none';
+         }
+       });
+       
+       newTabContainer.appendChild(newTabBtn);
+       newTabContainer.appendChild(menu);
+       tabBar.appendChild(newTabContainer);
        
        return 'Tab bar updated successfully';
      } catch (error) {
@@ -299,9 +382,8 @@ function createWindow(url = 'https://chat.openai.com/') {
 
   windows.set(windowId, {
     window,
-    title: 'Claude AI',
+    title: 'AI Assistant',
     url,
-    marginBottom: '105px',
   })
   windowOrder.push(windowId)
 
@@ -366,7 +448,7 @@ function createWindow(url = 'https://chat.openai.com/') {
   return window
 }
 
-ipcMain.on('new-tab', createNewTab)
+ipcMain.on('new-tab', (event, service) => createNewTab(service))
 ipcMain.on('close-tab', (event, windowId) => closeTab(windowId))
 ipcMain.on('switch-tab', (event, windowId) => showWindow(windowId))
 ipcMain.on('update-title', (event, windowId, title) =>
