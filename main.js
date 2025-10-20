@@ -190,55 +190,37 @@ function injectTabSystem(window, windowId) {
    html, body { 
      margin: 0 !important;
      padding: 0 !important;
+     overflow: hidden !important;
    }
    
    body { 
-     padding-top: 35px !important;
      -webkit-app-region: no-drag !important;
+     height: 100vh !important;
+     width: 100% !important;
+     display: block !important;
+     padding-top: 35px !important;
+     box-sizing: border-box !important;
    }
    
-   /* Área de drag específica */
    .electron-tabs {
      position: fixed !important;
      top: 0 !important;
      left: 0 !important;
      right: 0 !important;
      height: 35px !important;
-     z-index: 99999 !important;
+     z-index: 999999 !important;
      -webkit-app-region: drag !important;
      background: #1a1a1a !important;
      display: flex !important;
      border-bottom: 1px solid #333 !important;
    }
    
-   /* Elementos interativos não-drag */
    .electron-tabs * {
      -webkit-app-region: no-drag !important;
    }
    
-   /* Remove drag do resto da página */
    * {
      -webkit-app-region: no-drag !important;
-   }
-   
-   body {
-     overflow-y: auto !important;
-     overflow-x: hidden !important;
-     height: auto !important;
-     min-height: 100vh !important;
-   }
-   
-   main, 
-   #__next, 
-   [data-testid], 
-   .min-h-screen,
-   .h-screen,
-   .flex,
-   .grid,
-   [role="main"] {
-     height: auto !important;
-     min-height: auto !important;
-     max-height: none !important;
    }
  `)
 
@@ -246,40 +228,7 @@ function injectTabSystem(window, windowId) {
     .executeJavaScript(
       `
    (function() {
-     // Limpar estilos inline que forçam altura
-     const elements = document.querySelectorAll('*');
-     elements.forEach(el => {
-       if (el.style.height && el.style.height.includes('calc(100vh')) {
-         el.style.height = 'auto';
-       }
-       if (el.style.minHeight && el.style.minHeight.includes('calc(100vh')) {
-         el.style.minHeight = 'auto';
-       }
-       if (el.style.maxHeight && el.style.maxHeight.includes('calc(100vh')) {
-         el.style.maxHeight = 'none';
-       }
-     });
-     
-     // Observer para prevenir altura forçada
-     const observer = new MutationObserver(() => {
-       const problematicElements = document.querySelectorAll('[style*="calc(100vh"]');
-       problematicElements.forEach(el => {
-         if (!el.classList.contains('electron-tabs')) {
-           el.style.height = 'auto';
-           el.style.minHeight = 'auto';  
-           el.style.maxHeight = 'none';
-         }
-       });
-     });
-     
-     observer.observe(document.body, {
-       childList: true,
-       subtree: true,
-       attributes: true,
-       attributeFilter: ['style']
-     });
-     
-     // Título tracking
+     // Title tracking apenas
      let lastTitle = document.title;
      function checkTitle() {
        if (document.title !== lastTitle) {
@@ -293,7 +242,7 @@ function injectTabSystem(window, windowId) {
      setInterval(checkTitle, 3000);
      checkTitle();
      
-     return 'Natural layout preserved';
+     return 'Layout adjusted';
    })();
  `,
     )
@@ -321,7 +270,7 @@ function updateWindowTitle(windowId, title) {
   }
 }
 
-function createWindow(url = 'https://claude.ai/new') {
+function createWindow(url = 'https://chat.openai.com/') {
   const windowId = Date.now().toString()
   const persistentSession = session.fromPartition('persist:claude-session')
 
@@ -348,7 +297,12 @@ function createWindow(url = 'https://claude.ai/new') {
     },
   })
 
-  windows.set(windowId, { window, title: 'Claude AI', url })
+  windows.set(windowId, {
+    window,
+    title: 'Claude AI',
+    url,
+    marginBottom: '105px',
+  })
   windowOrder.push(windowId)
 
   if (activeWindowId) {
